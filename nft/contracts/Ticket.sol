@@ -11,16 +11,13 @@ contract Ticket is ERC721 {
         ticketLimit = 3;
     }
 
-    function mint(string memory _userName) public {
+    function mint(string memory _userName) public virtual payable{
         if (ticketLimit != 0){
             require(!_addressExists[msg.sender]);
+            require(msg.sender.balance >= 1 ether, "Not enough ETH in account: check balance.");
             userNames.push(_userName);
             uint _id = ticketLimit;
-            try {
-                _safeMint(msg.sender, _id);
-            } catch (error){
-                console.error(error).
-            }
+            _safeMint(msg.sender, _id);
             _addressExists[msg.sender] = true;
             ticketLimit = ticketLimit - 1;
         }
