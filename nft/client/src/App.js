@@ -1,8 +1,8 @@
 import React, {Component} from "react"
 import './App.css'
 import {getWeb3} from "./getWeb3"
+import map from "./artifacts/deployments/map.json"
 import {getEthereum} from "./getEthereum"
-import Ticket from "../Ticket.json"
 
 class App extends Component {
 
@@ -10,12 +10,7 @@ class App extends Component {
         web3: null,
         accounts: null,
         chainid: null,
-        vyperStorage: null,
-        vyperValue: 0,
-        vyperInput: 0,
-        solidityStorage: null,
-        solidityValue: 0,
-        solidityInput: 0,
+        ticketContract: null
     }
 
     componentDidMount = async () => {
@@ -35,6 +30,7 @@ class App extends Component {
 
         // Use web3 to get the user's accounts
         const accounts = await web3.eth.getAccounts()
+        this.setState({account: accounts[0]})
 
         // Get the current chain id
         const chainid = parseInt(await web3.eth.getChainId())
@@ -63,14 +59,43 @@ class App extends Component {
             _chainID = "dev"
         }
         console.log(_chainID)
+        const ticketContract = await this.loadContract(_chainID, "Ticket")
 
+        if (!ticketContract){
+            return
+        }
+        this.setState({ticketContract})
+    }
 
+    loadContract = async (chain, contractName) => {
+        // Load a deployed contract instance into a web3 contract object
+        const {web3} = this.state
+
+        // Get the address of the most recent deployment from the deployment map
+        let address
+        try {
+            address = map[chain][contractName][0]
+        } catch (e) {
+            console.log(`Couldn't find any deployed contract "${contractName}" on the chain "${chain}".`)
+            return undefined
+        }
+
+        // Load the artifact with the specified address
+        let contractArtifact
+        try {
+            contractArtifact = await import(`./artifacts/deployments/${chain}/${address}.json`)
+        } catch (e) {
+            console.log(`Failed to load contract artifact "./artifacts/deployments/${chain}/${address}.json"`)
+            return undefined
+        }
+
+        return new web3.eth.Contract(contractArtifact.abi, address)
     }
 
 
 
     mint = (name) => {
-        this.state.contract.methods.mint(name).send({ from: this.state.account })
+        this.state.ticketContract.methods.mint(name).send({ from: this.state.account })
         .once('receipt', (receipt) => {
           this.setState({
             names: [...this.state.names, name]
@@ -79,6 +104,7 @@ class App extends Component {
       }
 
     constructor(props) {
+        super(props)
         this.state = {
           account: '',
           contract: null,
@@ -89,7 +115,7 @@ class App extends Component {
 
     render() {
         const {
-            web3, accounts, chainid,
+            web3, accounts, chainid, ticketContract
         } = this.state
 
         if (!web3) {
@@ -101,7 +127,7 @@ class App extends Component {
             return <div>Wrong Network! Switch to your local RPC "Localhost: 8545" in your Web3 provider (e.g. Metamask)</div>
         }
 
-        if (!vyperStorage || !solidityStorage) {
+        if (!ticketContract) {
             return <div>Could not find a deployed contract. Check console for details.</div>
         }
 
@@ -116,11 +142,6 @@ class App extends Component {
                 >
                     Grab a Ticket
                 </a>
-                <ul className="navbar-nav px-3">
-                    <li className="nav-item text-nowrap d-none d-sm-none d-sm-block">
-                    <small className="text-white"><span id="account">{this.state.account}</span></small>
-                    </li>
-                </ul>
                 </nav>
                 <div className="container-fluid mt-5">
                     <div className="row">
