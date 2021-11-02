@@ -182,7 +182,6 @@ class App extends Component {
                     <hr/>
                     <div className="row text-center">
                         <div>Tickets Left: {this.state.ticketsLeft}</div>
-                        <div>Total Tickets: {this.state.totalSupply}</div>
                     </div>
                     <hr/>
                     <div className="row text-center">
