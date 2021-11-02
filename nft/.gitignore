@@ -5,9 +5,12 @@ build
 .DS*
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+.idea/
+__pycache__
+.history
+.hypothesis/
+client/src/artifacts
+reports/
 
 # C extensions
 *.so

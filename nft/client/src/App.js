@@ -10,8 +10,18 @@ class App extends Component {
         web3: null,
         accounts: null,
         chainid: null,
-        ticketContract: null
     }
+
+    constructor(props) {
+        super(props)
+        this.state = {
+          account: '',
+          contract: null,
+          totalSupply: 0,
+          names: [],
+          ticketsLeft: 0
+        }
+      }
 
     componentDidMount = async () => {
 
@@ -31,6 +41,7 @@ class App extends Component {
         // Use web3 to get the user's accounts
         const accounts = await web3.eth.getAccounts()
         this.setState({account: accounts[0]})
+        console.log(this.state.account)
 
         // Get the current chain id
         const chainid = parseInt(await web3.eth.getChainId())
@@ -59,12 +70,23 @@ class App extends Component {
             _chainID = "dev"
         }
         console.log(_chainID)
-        const ticketContract = await this.loadContract(_chainID, "Ticket")
+        const contract = await this.loadContract(_chainID, "Ticket")
 
-        if (!ticketContract){
+        if (!contract){
             return
         }
-        this.setState({ticketContract})
+        this.setState({contract})
+        const totalSupply = await contract.methods.totalSupply().call()
+        this.setState({totalSupply})
+        const ticketsLeft = await contract.methods.ticketLimit().call()
+        this.setState({ticketsLeft})
+        //Load Names
+        for (var i = 1; i <= totalSupply; i++){
+            const name = await contract.methods.userNames(i - 1).call()
+            this.setState({
+                names: [...this.state.names, name]
+            })
+        }
     }
 
     loadContract = async (chain, contractName) => {
@@ -92,10 +114,8 @@ class App extends Component {
         return new web3.eth.Contract(contractArtifact.abi, address)
     }
 
-
-
     mint = (name) => {
-        this.state.ticketContract.methods.mint(name).send({ from: this.state.account })
+        this.state.contract.methods.mint(name).send({ from: this.state.account })
         .once('receipt', (receipt) => {
           this.setState({
             names: [...this.state.names, name]
@@ -103,23 +123,19 @@ class App extends Component {
         })
       }
 
-    constructor(props) {
-        super(props)
-        this.state = {
-          account: '',
-          contract: null,
-          totalSupply: 0,
-          names: []
+    isDisabled(){
+        if (this.state.ticketsLeft == 0){
+            return true;
         }
-      }
+    }
 
     render() {
         const {
-            web3, accounts, chainid, ticketContract
+            web3, chainid, contract
         } = this.state
 
         if (!web3) {
-            return <div>Loading Web3, accounts, and contracts...</div>
+            return <div>Loading Web3, accounts, and contract...</div>
         }
 
         // <=42 to exclude Kovan, <42 to include Kovan
@@ -127,21 +143,15 @@ class App extends Component {
             return <div>Wrong Network! Switch to your local RPC "Localhost: 8545" in your Web3 provider (e.g. Metamask)</div>
         }
 
-        if (!ticketContract) {
+        if (!contract) {
             return <div>Could not find a deployed contract. Check console for details.</div>
         }
 
-        const isAccountsUnlocked = accounts ? accounts.length > 0 : false
 
         return (
             <div>
                 <nav className="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
-                <a
-                    className="navbar-brand col-sm-3 col-md-2 mr-0"
-                    target="_blank"
-                >
-                    Grab a Ticket
-                </a>
+                    <a className="navbar-brand col-sm-3 col-md-2 mr-0"> Tickets</a>
                 </nav>
                 <div className="container-fluid mt-5">
                     <div className="row">
@@ -163,6 +173,7 @@ class App extends Component {
                                 type='submit'
                                 className='btn btn-block btn-primary'
                                 value='MINT'
+                                disabled={this.isDisabled()}
                             />
                             </form>
                         </div>
@@ -170,10 +181,14 @@ class App extends Component {
                     </div>
                     <hr/>
                     <div className="row text-center">
+                        <div>Tickets Left: {this.state.ticketsLeft}</div>
+                        <div>Total Tickets: {this.state.totalSupply}</div>
+                    </div>
+                    <hr/>
+                    <div className="row text-center">
                         { this.state.names.map((name, key) => {
                         return(
                             <div key={key} className="col-md-3 mb-3">
-                            <div className="token"></div>
                             <div>{name}</div>
                             </div>
                         )
