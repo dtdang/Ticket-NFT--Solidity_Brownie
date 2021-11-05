@@ -27,4 +27,8 @@ contract Ticket is ERC721 {
     function ticketBalance() public returns (uint256) {
         return ticketLimit;
     }
+
+    function giveUserName(uint256 tokenId) public returns (string memory) {
+        return userNames[tokenId];
+    }
 }
